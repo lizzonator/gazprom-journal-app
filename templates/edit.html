@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Изменить запись</title>
+</head>
+<body>
+    <h1>Изменить запись</h1>
+    <form method="post" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+        <label for="type">Тип:</label>
+        {{ form.type() }}
+        <br>
+        <label for="content">Содержание:</label>
+        {{ form.content() }}
+        <br>
+        <label for="file">Прикрепить файл:</label>
+        {{ form.file() }}
+        <br>
+        <button type="submit">Обновить запись</button>
+    </form>
+    <a href="/">Вернуться к журналу</a>
+</body>
+</html>

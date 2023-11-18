@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Журнал</title>
+</head>
+<body>
+    <h1>Записи в журнале</h1>
+    <p>Добро пожаловать, {{ current_user.username }}!</p>
+    <a href="{{ url_for('logout') }}">Выйти</a>
+    <ul>
+        {% for log_entry in log_entries %}
+            <li>
+                <strong>{{ log_entry.type }}</strong> - {{ log_entry.content }}
+                <br>
+                {{ log_entry.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                {% if log_entry.file %}
+                    <br>
+                    Файл: <a href="{{ url_for('uploaded_file', filename=log_entry.file) }}" target="_blank">{{ log_entry.file }}</a>
+                {% endif %}
+                <br>
+                <!-- <a href="{{ url_for('edit', id=log_entry.id) }}">Edit</a>
+                <a href="{{ url_for('delete', id=log_entry.id) }}">Delete</a> -->
+                <button type="button" onclick="location.href='{{ url_for('edit', id=log_entry.id) }}'">Изменить</button>
+                <button type="button" onclick="location.href='{{ url_for('delete', id=log_entry.id) }}'">Удалить</button>
+            </li>
+        {% endfor %}
+    </ul>
+    <a href="{{ url_for('create') }}">Добавить новую запись</a>
+</body>
+</html>
