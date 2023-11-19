@@ -8,6 +8,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 import os
+import pandas as pd
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -143,6 +144,28 @@ def delete(id):
     db.session.commit()
     flash('Запись удалена успешно!', 'success')
     return redirect(url_for('index'))
+
+
+@app.route('/export_excel')
+@login_required
+def export_excel():
+    log_entries = LogEntry.query.order_by(LogEntry.timestamp.asc()).all()
+
+    # Create a Pandas DataFrame from the log entries
+    data = {
+        'Тип записи': [entry.type for entry in log_entries],
+        'Содержание': [entry.content for entry in log_entries],
+        'Время': [entry.timestamp.strftime('%Y-%m-%d %H:%M:%S') for entry in log_entries],
+        'Файл': [entry.file for entry in log_entries],
+    }
+    df = pd.DataFrame(data)
+
+    # Create Excel file
+    excel_file_path = 'log_entries.xlsx'
+    df.to_excel(excel_file_path, index=False)
+
+    # Send the file as a response
+    return send_from_directory(os.getcwd(), excel_file_path, as_attachment=True)
 
 
 if __name__ == '__main__':
