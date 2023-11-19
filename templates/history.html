@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>История записей</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>История записей</h1>
+    <p>Добро пожаловать, {{ current_user.username }}!</p>
+    <button type="button" onclick="location.href='{{ url_for('logout') }}'">Выйти</button>
+    <button type="button" onclick="location.href='{{ url_for('export_history_excel') }}'">Экспорт в Excel</button>
+    <button type="button" onclick="location.href='{{ url_for('index') }}'">Вернуться к журналу</button>
+
+    <!-- Display history entries in a table -->
+    <table>
+        <thead>
+            <tr>
+                <th>Действие</th>
+                <th>Тип записи</th>
+                <th>Содержание</th>
+                <th>Пользователь</th>
+                <th>Время</th>
+                <th>Файл</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in log_entry_history %}
+                <tr>
+                    <td>{{ entry.action }}</td>
+                    <td>{{ entry.type }}</td>
+                    <td>{{ entry.content }}</td>
+                    <td>{{ entry.user.username }}</td>
+                    <td>{{ entry.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    <td>
+                        {% if entry.file %}
+                            <a href="{{ url_for('uploaded_file', filename=entry.file) }}" target="_blank">{{ entry.file }}</a>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

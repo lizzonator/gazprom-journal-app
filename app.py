@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory
+from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory, send_file, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, SelectField, FileField
@@ -9,24 +9,24 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 import os
 import pandas as pd
+from openpyxl import Workbook
+from io import BytesIO
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'  # You can replace this with your actual database URL
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 
-# Database model for User
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(100), nullable=False)
 
 
-# Database model for LogEntry
 class LogEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.String(20), nullable=False)
@@ -35,6 +35,23 @@ class LogEntry(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('log_entries', lazy=True))
     file = db.Column(db.String(255))  # Adjust the length as needed
+
+
+class LogEntryHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    log_entry_id = db.Column(db.Integer, nullable=False)
+    type = db.Column(db.String(20), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.utcnow() + timedelta(hours=5))
+    action = db.Column(db.String(20), nullable=False)  # Action: create, update, delete
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('log_entry_history', lazy=True))
+    file = db.Column(db.String(255))  # Adjust the length as needed
+
+
+# Function to fetch log entry history
+def fetch_history_entries():
+    return LogEntryHistory.query.all()
 
 
 # WTForms for creating log entries
@@ -49,7 +66,6 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
-# Routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -102,6 +118,18 @@ def create():
         db.session.add(new_log_entry)
         db.session.commit()
 
+        # Log entry creation history
+        log_entry_history = LogEntryHistory(
+            log_entry_id=new_log_entry.id,
+            type=new_log_entry.type,
+            content=new_log_entry.content,
+            action='создание',
+            user=current_user,
+            file=new_log_entry.file
+        )
+        db.session.add(log_entry_history)
+        db.session.commit()
+
         flash('Запись добавлена успешно!', 'success')
         return redirect(url_for('index'))
 
@@ -130,6 +158,19 @@ def edit(id):
             log_entry.file = filename
 
         db.session.commit()
+
+        # Log entry update history
+        log_entry_history = LogEntryHistory(
+            log_entry_id=log_entry.id,
+            type=log_entry.type,
+            content=log_entry.content,
+            action='обновление',
+            user=current_user,
+            file=log_entry.file
+        )
+        db.session.add(log_entry_history)
+        db.session.commit()
+
         flash('Запись изменена успешно!', 'success')
         return redirect(url_for('index'))
 
@@ -140,10 +181,69 @@ def edit(id):
 @login_required
 def delete(id):
     log_entry = LogEntry.query.get_or_404(id)
+
+    # Log entry deletion history
+    log_entry_history = LogEntryHistory(
+        log_entry_id=log_entry.id,
+        type=log_entry.type,
+        content=log_entry.content,
+        action='удаление',
+        user=current_user,
+        file=log_entry.file
+    )
+    db.session.add(log_entry_history)
+    db.session.commit()
+
     db.session.delete(log_entry)
     db.session.commit()
     flash('Запись удалена успешно!', 'success')
     return redirect(url_for('index'))
+
+
+@app.route('/history')
+@login_required
+def history():
+    log_entry_history = LogEntryHistory.query.order_by(LogEntryHistory.timestamp.asc()).all()
+    return render_template('history.html', log_entry_history=log_entry_history)
+
+
+@app.route('/export_history_excel')
+@login_required
+def export_history_excel():
+    # Fetch the log entry history
+    log_entry_history = fetch_history_entries()
+
+    # Create a new Excel workbook
+    wb = Workbook()
+    ws = wb.active
+
+    # Add headers to the Excel file
+    headers = ["Действие", "Тип записи", "Содержание", "Пользователь", "Время", "Файл"]
+    ws.append(headers)
+
+    # Add data to the Excel file
+    for entry in log_entry_history:
+        row_data = [
+            entry.action,
+            entry.type,
+            entry.content,
+            entry.user.username,
+            entry.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            entry.file if entry.file else ''
+        ]
+        ws.append(row_data)
+
+    # Save the Excel file to a BytesIO buffer
+    excel_buffer = BytesIO()
+    wb.save(excel_buffer)
+    excel_buffer.seek(0)
+
+    # Create a Flask response with the Excel file
+    response = make_response(excel_buffer.read())
+    response.headers['Content-Disposition'] = 'attachment; filename=log_entries_history.xlsx'
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+    return response
 
 
 @app.route('/export_excel')
@@ -172,12 +272,11 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
 
-        # Add example users (replace these with your actual user data)
+        # Add example users
         example_users = [
-            {'username': 'boss', 'password': 'zhopa'},
-            {'username': 'senior_engineer', 'password': 'zh0p4'},
-            {'username': 'junior_engineer', 'password': 'ZHOPA'},
-            # Add more users as needed
+            {'username': 'boss', 'password': 'opa'},
+            {'username': 'engineer1', 'password': '0p4'},
+            {'username': 'engineer2', 'password': 'OPA'},
         ]
 
         for user_data in example_users:

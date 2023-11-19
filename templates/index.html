@@ -27,6 +27,8 @@
     <p>Добро пожаловать, {{ current_user.username }}!</p>
     <button type="button" onclick="location.href='{{ url_for('logout') }}'">Выйти</button>
     <button type="button" onclick="location.href='{{ url_for('create') }}'">Добавить новую запись</button>
+    <button type="button" onclick="location.href='{{ url_for('history') }}'">История записей</button>
+    
     <!-- Add the Export to Excel button -->
     <form method="get" action="{{ url_for('export_excel') }}">
         <button type="submit">Экспорт в Excel</button>
