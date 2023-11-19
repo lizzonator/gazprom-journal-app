@@ -6,7 +6,7 @@ from wtforms.validators import DataRequired
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 
 app = Flask(__name__)
@@ -30,7 +30,7 @@ class LogEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.String(20), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.utcnow() + timedelta(hours=5))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('log_entries', lazy=True))
     file = db.Column(db.String(255))  # Adjust the length as needed
@@ -58,10 +58,10 @@ def login():
 
         if user and check_password_hash(user.password_hash, password):
             login_user(user)
-            flash('Login successful!', 'success')
+            flash('Вы успешно вошли в аккаунт!', 'success')
             return redirect(url_for('index'))
         else:
-            flash('Login failed. Check your username and password.', 'danger')
+            flash('Ошибка. Проверьте, пожалуйста, логин и пароль.', 'danger')
 
     return render_template('login.html')
 
@@ -70,14 +70,14 @@ def login():
 @login_required
 def logout():
     logout_user()
-    flash('Logged out successfully!', 'success')
+    flash('Вы успешно вышли из аккаунта!', 'success')
     return redirect(url_for('login'))
 
 
 @app.route('/')
 @login_required
 def index():
-    log_entries = LogEntry.query.order_by(LogEntry.timestamp.desc()).all()
+    log_entries = LogEntry.query.order_by(LogEntry.timestamp.asc()).all()
     return render_template('index.html', log_entries=log_entries)
 
 
@@ -101,7 +101,7 @@ def create():
         db.session.add(new_log_entry)
         db.session.commit()
 
-        flash('Log entry created successfully!', 'success')
+        flash('Запись добавлена успешно!', 'success')
         return redirect(url_for('index'))
 
     return render_template('create.html', form=form)
@@ -129,7 +129,7 @@ def edit(id):
             log_entry.file = filename
 
         db.session.commit()
-        flash('Log entry updated successfully!', 'success')
+        flash('Запись изменена успешно!', 'success')
         return redirect(url_for('index'))
 
     return render_template('edit.html', form=form, log_entry=log_entry)
@@ -141,7 +141,7 @@ def delete(id):
     log_entry = LogEntry.query.get_or_404(id)
     db.session.delete(log_entry)
     db.session.commit()
-    flash('Log entry deleted successfully!', 'success')
+    flash('Запись удалена успешно!', 'success')
     return redirect(url_for('index'))
 
 
@@ -168,7 +168,7 @@ if __name__ == '__main__':
                 new_user = User(username=username, password_hash=password)
                 db.session.add(new_user)
             
-            print(f"Adding user: {user_data['username']}")
+            print(f"Добавлен пользователь: {user_data['username']}")
 
         # Commit the changes to the database
         db.session.commit()

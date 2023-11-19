@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+    <title>Вход</title>
 </head>
 <body>
-    <h1>Login</h1>
+    <h1>Вход</h1>
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             <ul class="flash-messages">
@@ -17,13 +17,13 @@
         {% endif %}
     {% endwith %}
     <form method="post">
-        <label for="username">Username:</label>
+        <label for="username">Логин:</label>
         <input type="text" name="username" required>
         <br>
-        <label for="password">Password:</label>
+        <label for="password">Пароль:</label>
         <input type="password" name="password" required>
         <br>
-        <button type="submit">Login</button>
+        <button type="submit">Войти</button>
     </form>
 </body>
 </html>

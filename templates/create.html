@@ -12,14 +12,18 @@
         <label for="type">Тип:</label>
         {{ form.type() }}
         <br>
+        <br>
         <label for="content">Содержание:</label>
         {{ form.content() }}
+        <br>
         <br>
         <label for="file">Прикрепить файл:</label>
         {{ form.file() }}
         <br>
+        <br>
         <button type="submit">Добавить запись</button>
     </form>
-    <a href="/">Вернуться к журналу</a>
+    <br>
+    <button type="button" onclick="location.href='{{ url_for('index') }}'">Вернуться к журналу</button>
 </body>
 </html>
